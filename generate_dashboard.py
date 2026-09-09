@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from db import get_connection
 from numero_processo import formatar
 
-SAIDA = "dashboard.html"
+SAIDA = "index.html"
 
 # Sequência exibida na tabela "por processo" (Distribuído e Acórdão suprimidos a pedido).
 # "Ajuizamento" não é uma regra de relevância — vem direto de processos.data_ajuizamento.
@@ -34,13 +34,14 @@ def _coletar_dados():
         "com_erro": conn.execute(
             "SELECT COUNT(*) c FROM processos WHERE ultimo_erro IS NOT NULL"
         ).fetchone()["c"],
-        "movimentos": conn.execute("SELECT COUNT(*) c FROM movimentos").fetchone()["c"],
-        "processos_com_evento": conn.execute(
+        "inqueritos_policiais": conn.execute(
             """
-            SELECT COUNT(DISTINCT numero_processo) c FROM movimentos m
-            JOIN movimentos_relevantes mr ON mr.movimento_id = m.id
+            SELECT COUNT(*) c FROM processos p
+            JOIN tabela_cnj tc ON tc.codigo = p.classe_processual AND tc.tipo = 'C'
+            WHERE tc.nome = 'Inquérito Policial'
             """
         ).fetchone()["c"],
+        "movimentos": conn.execute("SELECT COUNT(*) c FROM movimentos").fetchone()["c"],
     }
 
     eventos_rows = conn.execute(
@@ -60,10 +61,14 @@ def _coletar_dados():
 
     metadados_rows = conn.execute(
         """
-        SELECT numero, classe_processual, assunto_codigo, vara, municipio_ibge,
-               codigo_localidade, situacao, data_ajuizamento
-        FROM processos
-        WHERE hash_estado IS NOT NULL
+        SELECT p.numero, p.classe_processual, tc.nome AS classe_nome,
+               p.assunto_codigo, ta.nome AS assunto_nome,
+               p.vara, p.municipio_ibge, p.codigo_localidade,
+               p.situacao, p.data_ajuizamento
+        FROM processos p
+        LEFT JOIN tabela_cnj tc ON tc.codigo = p.classe_processual AND tc.tipo = 'C'
+        LEFT JOIN tabela_cnj ta ON ta.codigo = p.assunto_codigo AND ta.tipo = 'A'
+        WHERE p.hash_estado IS NOT NULL
         """
     ).fetchall()
     metadados = {row["numero"]: dict(row) for row in metadados_rows}
@@ -93,9 +98,10 @@ def _coletar_dados():
         ]
         progresso.append({
             "numero": formatar(numero),
-            "classe_processual": meta["classe_processual"],
-            "assunto_codigo": meta["assunto_codigo"],
+            "classe_processual": meta["classe_nome"] or meta["classe_processual"],
+            "assunto_codigo": meta["assunto_nome"] or meta["assunto_codigo"],
             "vara": meta["vara"],
+            "municipio_ibge": meta["municipio_ibge"],
             "situacao": meta["situacao"],
             "data_ajuizamento": ajuizamento,
             "etapas": etapas_linha,
@@ -291,8 +297,8 @@ function renderKpis() {
     { valor: k.consultados, rotulo: 'Já consultados' },
     { valor: k.pendentes, rotulo: 'Pendentes de 1ª consulta', classe: k.pendentes > 0 ? 'warn' : '' },
     { valor: k.com_erro, rotulo: 'Com último erro', classe: k.com_erro > 0 ? 'danger' : '' },
+    { valor: k.inqueritos_policiais, rotulo: 'Inquéritos Policiais' },
     { valor: k.movimentos, rotulo: 'Movimentos coletados' },
-    { valor: k.processos_com_evento, rotulo: 'Processos c/ andamento relevante' },
   ];
   document.getElementById('kpis').innerHTML = itens.map(i => `
     <div class="kpi ${i.classe || ''}">
@@ -342,6 +348,11 @@ const COLUNAS_FIXAS = [
     chave: 'vara', rotulo: 'Vara', tipo: 'select',
     valor: p => p.vara,
     exibir: p => `<td class="info-processo">${p.vara || '—'}</td>`,
+  },
+  {
+    chave: 'municipio_ibge', rotulo: 'Município (IBGE)', tipo: 'select',
+    valor: p => p.municipio_ibge,
+    exibir: p => `<td class="info-processo">${p.municipio_ibge ?? '—'}</td>`,
   },
   {
     chave: 'situacao', rotulo: 'Situação', tipo: 'select',

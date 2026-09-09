@@ -99,10 +99,17 @@ coletados (contrariaria a decisão 004/005).
 
 Decisão: cada pessoa/rol tem seu próprio `mni.db`, criado do zero
 (`schema.sql` via `db.py`) e populado com `carga.py` a partir da lista dela.
-O `.gitignore` já mantém `mni.db`, `.env`, `processos.txt` e `dashboard.html`
-fora do repositório, então clonar o código não traz dados de ninguém junto;
+O `.gitignore` mantém `mni.db`, `.env`, `processos.txt` e `index.html` fora
+do repositório, então clonar o código não traz dados de ninguém junto;
 `.env.example` documenta as variáveis exigidas sem expor credenciais. Passo a
 passo em `README.md` § "Compartilhar com outro rol de processos".
+
+Nota: `processos.txt` foi versionado por engano na estrutura inicial do
+projeto (commit `314ed94`) — 8.463 números de processo ficaram públicos no
+GitHub antes desta regra existir na prática, não só no papel. Removido do
+controle de versão depois (`git rm --cached`), mas permanece no histórico
+antigo do git; reescrever histórico (`git filter-repo`/BFG) é uma decisão
+separada, não tomada aqui.
 
 ## 010 — `worker_alteracao.py` parar de varrer `situacao = 'Extinto'` (revertida)
 
@@ -119,3 +126,25 @@ Decisão revertida: `worker_alteracao.py` volta a varrer todo `status =
 de manter processos extintos na varredura barata é aceitável — é uma
 chamada por processo, sem `consultarProcesso` completo — e é o preço de não
 perder reaberturas silenciosamente.
+
+## 011 — Tradução de classe/assunto via cache do SGT WebService do CNJ
+
+`classe_processual` e `assunto_codigo` (vindos do MNI) são apenas códigos
+numéricos — inúteis para leitura direta no dashboard. Primeira tentativa foi
+popular uma tabela local a partir das Tabelas Processuais Unificadas do CNJ,
+baixadas como `.xlsx` do site do CNJ; os arquivos vieram com corrupção de
+codificação (bytes de texto quebrados, inclusive resíduos do escape
+`_xHHHH_` do Excel para caractere inválido), tornando arriscado extrair
+nomes confiáveis por reconstrução de bytes.
+
+Decisão: usar o SGT WebService público do CNJ
+(`https://www.cnj.jus.br/sgt/sgt_ws.php?wsdl`, operação
+`getArrayDetalhesItemPublicoWS(codigo, tipo)`, `tipo` = `C` (classe) ou `A`
+(assunto)) como fonte de verdade — mesmo padrão já usado para o MNI (webservice
++ client zeep singleton + cache local em SQLite). Tabela `tabela_cnj`
+(`codigo`, `tipo`, `nome`, `codigo_pai`, `situacao`, `atualizado_em`) é
+populada sob demanda por `backfill_tabela_cnj.py`, só para os códigos que
+aparecem em `processos` e ainda não estão cacheados — evita varrer a tabela
+CNJ inteira (dezenas de milhares de itens) quando só uma fração aparece no
+acervo monitorado. `generate_dashboard.py` faz `LEFT JOIN` com `tabela_cnj`
+e cai para o código cru se o nome ainda não foi cacheado.

@@ -35,6 +35,13 @@ apenas para os processos que mudaram.
   Instanciar o client do zeep uma única vez por rodada.
 - `consultarProcesso`: sempre `movimentos=true`, `documentos=false` — sem isso
   o payload explode.
+- `classe_processual` e `assunto_codigo` são códigos CNJ crus em `processos`;
+  o nome (para exibição) vem de `tabela_cnj`, cache local populado sob
+  demanda a partir do SGT WebService do CNJ
+  (`https://www.cnj.jus.br/sgt/sgt_ws.php?wsdl`,
+  `getArrayDetalhesItemPublicoWS`) via `backfill_tabela_cnj.py`. Nunca
+  hardcodear a tradução código→nome no código Python — mesma lógica de
+  `regras_relevancia` (dado, não `if`).
 
 ## Confirmado contra o WSDL/serviço real
 

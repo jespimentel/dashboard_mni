@@ -2,7 +2,8 @@
 /.env
 mni.db
 zeep_cache.db
-dashboard.html
+index.html
+processos.txt
 __pycache__/
 *.pyc
 .venv/

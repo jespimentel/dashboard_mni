@@ -62,7 +62,18 @@ consulta completa se o hash mudou):
 python3 worker_alteracao.py
 ```
 
-**3. Marcar andamentos relevantes**
+**3. Traduzir código de classe/assunto para nome**
+
+```
+python3 backfill_tabela_cnj.py
+```
+
+Consulta o SGT WebService do CNJ (`sgt_ws.php`) para os códigos de
+`classe_processual`/`assunto_codigo` que aparecem em `processos` e ainda não
+estão em cache, e grava em `tabela_cnj`. Rodar depois de cada worker que traga
+processo novo.
+
+**4. Marcar andamentos relevantes**
 
 ```
 python3 aplicar_relevancia.py
@@ -71,7 +82,7 @@ python3 aplicar_relevancia.py
 Aplica as regras da tabela `regras_relevancia` sobre os movimentos ainda não
 classificados. Rodar depois de cada worker.
 
-**4. Ver o resultado**
+**5. Ver o resultado**
 
 Relatório em texto no terminal, de todos os processos ou de um só:
 
@@ -85,7 +96,7 @@ externos):
 
 ```
 python3 generate_dashboard.py
-open dashboard.html
+open index.html
 ```
 
 ## Rotina do dia a dia
@@ -94,8 +105,9 @@ open dashboard.html
 python3 carga.py processos.txt
 python3 worker_novos.py        # repetir até pendentes = 0
 python3 worker_alteracao.py
+python3 backfill_tabela_cnj.py
 python3 aplicar_relevancia.py
-python3 generate_dashboard.py && open dashboard.html
+python3 generate_dashboard.py && open index.html
 ```
 
 ## Adicionar um novo tipo de andamento relevante
@@ -137,10 +149,13 @@ próprio banco local.
 | `worker_novos.py` | backfill de processos nunca consultados |
 | `worker_alteracao.py` | varredura de alteração dos processos já consultados |
 | `ingest.py` | grava movimentos e atualiza `hash_estado` |
+| `backfill_metadados.py` | migração pontual: preenche `classe_processual`/`situacao`/etc. de processos já consultados antes desses campos existirem |
+| `cnj_client.py` | cliente zeep singleton do SGT WebService (classes/assuntos CNJ) |
+| `backfill_tabela_cnj.py` | traduz códigos de classe/assunto para nome, cacheados em `tabela_cnj` |
 | `seed_regras.py` | define as regras de relevância |
 | `aplicar_relevancia.py` | aplica as regras sobre os movimentos coletados |
 | `relatorio_relevantes.py` | relatório em texto dos andamentos relevantes |
-| `generate_dashboard.py` | gera `dashboard.html` |
+| `generate_dashboard.py` | gera `index.html` |
 
-`mni.db`, `zeep_cache.db` e `dashboard.html` são gerados/estado local — não
+`mni.db`, `zeep_cache.db` e `index.html` são gerados/estado local — não
 versionados (ver `.gitignore`).

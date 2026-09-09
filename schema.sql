@@ -69,6 +69,20 @@ CREATE TABLE IF NOT EXISTS movimentos_relevantes (
 );
 
 -- ============================================================
+-- tabela_cnj: cache local das Tabelas Processuais Unificadas do CNJ
+-- (classes e assuntos), consultadas sob demanda via SGT WebService.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS tabela_cnj (
+    codigo          INTEGER NOT NULL,
+    tipo            TEXT NOT NULL,      -- 'C' = classe, 'A' = assunto
+    nome            TEXT,
+    codigo_pai      INTEGER,
+    situacao        TEXT,               -- 'A' = ativo, 'I' = inativo (na tabela CNJ)
+    atualizado_em   TEXT NOT NULL,
+    PRIMARY KEY (codigo, tipo)
+);
+
+-- ============================================================
 -- cargas: log de cada importação de CSV/TXT com a lista de processos
 -- ============================================================
 CREATE TABLE IF NOT EXISTS cargas (

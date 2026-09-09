@@ -46,11 +46,23 @@ Decisão: `INSERT ... ON CONFLICT(numero) DO UPDATE` — processo repetido no
 CSV só atualiza `ultima_carga` (e ressuscita se estava inativo); processo
 novo entra com `hash_estado` nulo.
 
-## 005 — Inativação em vez de exclusão
+## 005 — Inativação nunca inferida por ausência na carga (revisado)
 
-Processos que desaparecem do CSV/TXT de carga (arquivamento, erro de export,
-etc.) são marcados `status = 'inativo'`, nunca excluídos. O worker só varre
-`status = 'ativo'`. Reversível se o processo reaparecer numa carga seguinte.
+Versão original desta decisão: processo que desaparecesse do CSV/TXT de
+carga era marcado `status = 'inativo'`. Errado — assume que toda carga
+representa a lista completa e atual do acervo. Na prática a carga pode ser
+parcial (ex.: só os processos vistos num mês específico); tratar ausência
+como sinal de arquivamento inativaria processos que continuam ativos e
+simplesmente não estavam naquele arquivo.
+
+Decisão revisada: `carga.py` nunca inativa por ausência — só insere
+processo novo e atualiza `ultima_carga` de quem já existe. Situação real do
+processo (inclusive extinção) vem da própria API MNI, gravada em
+`processos.situacao` (`ingest.py`, `situacaoProcesso` de
+`dadosBasicos.outroParametro`) a cada `consultarProcesso`. `status` continua
+existindo no schema como campo administrativo (`ativo`/`inativo`), mas hoje
+nada o define como `inativo` automaticamente — seria uma ação deliberada e
+separada, não um efeito colateral de carga.
 
 ## 006 — Regras de relevância como dado
 
@@ -91,3 +103,19 @@ O `.gitignore` já mantém `mni.db`, `.env`, `processos.txt` e `dashboard.html`
 fora do repositório, então clonar o código não traz dados de ninguém junto;
 `.env.example` documenta as variáveis exigidas sem expor credenciais. Passo a
 passo em `README.md` § "Compartilhar com outro rol de processos".
+
+## 010 — `worker_alteracao.py` parar de varrer `situacao = 'Extinto'` (revertida)
+
+Tentativa: já que `situacao` vem da API, parecia desperdício continuar
+chamando `consultarAlteracao` em processo extinto, já que "o estado não muda
+mais". Premissa falsa: um processo extinto pode reabrir (embargos, recurso,
+reautuação), e é exatamente o `consultarAlteracao` — a varredura barata —
+quem detectaria isso via mudança de hash. Filtrar por `situacao` antes dessa
+chamada eliminava o próprio mecanismo de detecção da reabertura, congelando
+o processo como extinto para sempre no banco.
+
+Decisão revertida: `worker_alteracao.py` volta a varrer todo `status =
+'ativo'` com `hash_estado IS NOT NULL`, sem filtrar por `situacao`. O custo
+de manter processos extintos na varredura barata é aceitável — é uma
+chamada por processo, sem `consultarProcesso` completo — e é o preço de não
+perder reaberturas silenciosamente.

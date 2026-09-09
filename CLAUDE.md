@@ -17,8 +17,11 @@ apenas para os processos que mudaram.
   `consultarAlteracao`, que não tem com o que comparar).
 - Backfill de processos novos em lotes limitados por execução
   (`WHERE hash_estado IS NULL LIMIT 500`), nunca tudo de uma vez.
-- Processos que somem do CSV/TXT de carga: marcar `status = 'inativo'`, nunca
-  `DELETE`. Reversível se o processo reaparecer.
+- `carga.py` pode receber listas parciais (ex.: só os processos vistos num
+  mês). Processo ausente da carga NUNCA é marcado `inativo` — a carga só
+  insere/atualiza quem está no arquivo. Situação real do processo (incluindo
+  extinção) vem da própria API MNI e fica em `processos.situacao`
+  (`ingest.py`, campo `situacaoProcesso`), nunca inferida por ausência.
 - Movimentos: chave única (`identificadorMovimento` do MNI se existir, senão
   SHA-256 de `numero + data_hora + codigo_nacional + complemento`) com
   `INSERT OR IGNORE`, para tornar o worker seguro para reexecução.

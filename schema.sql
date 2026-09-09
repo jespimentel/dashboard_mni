@@ -11,7 +11,9 @@ CREATE TABLE IF NOT EXISTS processos (
     hash_estado         TEXT,                  -- NULL = nunca consultado (processo novo)
     ultima_consulta     TEXT,                  -- timestamp da última consulta bem-sucedida ao MNI
     ultimo_erro         TEXT,                  -- mensagem do último erro, se houver
-    status              TEXT NOT NULL DEFAULT 'ativo',  -- 'ativo' | 'inativo'
+    status              TEXT NOT NULL DEFAULT 'ativo',  -- 'ativo' | 'inativo' (nunca inferido por
+                                                         -- ausência em carga.py; ver situacao para
+                                                         -- extinção real, vinda da API)
     primeira_carga      TEXT NOT NULL,         -- timestamp da primeira vez que apareceu num CSV
     ultima_carga        TEXT NOT NULL,         -- timestamp da última vez que apareceu num CSV
     classe_processual   INTEGER,               -- código CNJ (tabela unificada), sem tradução local
@@ -77,8 +79,7 @@ CREATE TABLE IF NOT EXISTS cargas (
     lidos           INTEGER NOT NULL DEFAULT 0,
     invalidos       INTEGER NOT NULL DEFAULT 0,
     novos           INTEGER NOT NULL DEFAULT 0,
-    repetidos       INTEGER NOT NULL DEFAULT 0,
-    inativados      INTEGER NOT NULL DEFAULT 0
+    repetidos       INTEGER NOT NULL DEFAULT 0
 );
 
 -- ============================================================

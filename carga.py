@@ -42,7 +42,7 @@ def carregar(caminho: str) -> None:
     novos = 0
     repetidos = 0
     for numero in validos:
-        cur = conn.execute("SELECT numero, status FROM processos WHERE numero = ?", (numero,))
+        cur = conn.execute("SELECT numero FROM processos WHERE numero = ?", (numero,))
         existente = cur.fetchone()
         if existente is None:
             novos += 1
@@ -56,33 +56,19 @@ def carregar(caminho: str) -> None:
         else:
             repetidos += 1
             conn.execute(
-                """
-                UPDATE processos SET status = 'ativo', ultima_carga = ? WHERE numero = ?
-                """,
+                "UPDATE processos SET ultima_carga = ? WHERE numero = ?",
                 (ts, numero),
             )
 
-    cur = conn.execute("SELECT numero FROM processos WHERE status = 'ativo'")
-    ativos_atuais = {row["numero"] for row in cur.fetchall()}
-    sumidos = ativos_atuais - validos
-    for numero in sumidos:
-        conn.execute("UPDATE processos SET status = 'inativo' WHERE numero = ?", (numero,))
-
     conn.execute(
-        """
-        UPDATE cargas SET invalidos = ?, novos = ?, repetidos = ?, inativados = ?
-        WHERE id = ?
-        """,
-        (invalidos, novos, repetidos, len(sumidos), carga_id),
+        "UPDATE cargas SET invalidos = ?, novos = ?, repetidos = ? WHERE id = ?",
+        (invalidos, novos, repetidos, carga_id),
     )
 
     conn.commit()
     conn.close()
 
-    print(
-        f"lidos={len(linhas)} invalidos={invalidos} novos={novos} "
-        f"repetidos={repetidos} inativados={len(sumidos)}"
-    )
+    print(f"lidos={len(linhas)} invalidos={invalidos} novos={novos} repetidos={repetidos}")
 
 
 if __name__ == "__main__":

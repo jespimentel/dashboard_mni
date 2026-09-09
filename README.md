@@ -40,8 +40,10 @@ python3 carga.py processos.txt
 ```
 
 Faz UPSERT: processos novos entram com `hash_estado` nulo, repetidos só
-atualizam `ultima_carga`, e os que sumiram do arquivo são marcados `inativo`
-(nunca apagados).
+atualizam `ultima_carga`. A lista pode ser parcial (ex.: só os processos
+vistos num mês) — quem não aparece na carga não é tocado, nunca inativado
+por ausência. Extinção real vem da própria API (campo `situacao`), não da
+carga.
 
 **2. Rodar o worker**
 

@@ -1,0 +1,8 @@
+.env
+/.env
+mni.db
+zeep_cache.db
+dashboard.html
+__pycache__/
+*.pyc
+.venv/

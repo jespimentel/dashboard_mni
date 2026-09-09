@@ -1,0 +1,123 @@
+# MNI — Monitoramento de processos TJSP
+
+Sistema para manter atualizada uma base de processos via webservice MNI 2.2.2
+do TJSP, usando `consultarAlteracao` (hash) como varredura barata e
+`consultarProcesso` apenas para os processos que mudaram. Regras de
+arquitetura e decisões estão em `CLAUDE.md` e `docs/decisoes.md`.
+
+## Setup
+
+```
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Criar `.env` na raiz com:
+
+```
+USUARIO_MNI=...
+SENHA_MNI=...
+```
+
+Inicializar o banco (uma vez só):
+
+```
+python3 db.py
+```
+
+## Uso
+
+**1. Carregar/atualizar a lista de processos** (a partir de um `.txt`/`.csv`,
+um número de processo por linha):
+
+```
+python3 carga.py processos.txt
+```
+
+Faz UPSERT: processos novos entram com `hash_estado` nulo, repetidos só
+atualizam `ultima_carga`, e os que sumiram do arquivo são marcados `inativo`
+(nunca apagados).
+
+**2. Rodar o worker**
+
+Processos nunca consultados (backfill, em lotes de 500 por execução):
+
+```
+python3 worker_novos.py
+```
+
+Repita até a contagem de `pendentes` (ver dashboard) chegar a zero.
+
+Processos já consultados antes (varredura barata de alteração — só refaz a
+consulta completa se o hash mudou):
+
+```
+python3 worker_alteracao.py
+```
+
+**3. Marcar andamentos relevantes**
+
+```
+python3 aplicar_relevancia.py
+```
+
+Aplica as regras da tabela `regras_relevancia` sobre os movimentos ainda não
+classificados. Rodar depois de cada worker.
+
+**4. Ver o resultado**
+
+Relatório em texto no terminal, de todos os processos ou de um só:
+
+```
+python3 relatorio_relevantes.py
+python3 relatorio_relevantes.py 1503003-61.2025.8.26.0599
+```
+
+Dashboard visual (HTML local, autocontido, sem envio de dados a serviços
+externos):
+
+```
+python3 generate_dashboard.py
+open dashboard.html
+```
+
+## Rotina do dia a dia
+
+```
+python3 carga.py processos.txt
+python3 worker_novos.py        # repetir até pendentes = 0
+python3 worker_alteracao.py
+python3 aplicar_relevancia.py
+python3 generate_dashboard.py && open dashboard.html
+```
+
+## Adicionar um novo tipo de andamento relevante
+
+Editar a lista `REGRAS` em `seed_regras.py` e rodar de novo:
+
+```
+python3 seed_regras.py
+```
+
+Não requer alteração no worker — regras de relevância são dado, não código.
+
+## Arquivos
+
+| Arquivo | Função |
+|---|---|
+| `db.py` | inicializa o SQLite a partir de `schema.sql` |
+| `schema.sql` | schema das tabelas (`processos`, `movimentos`, `regras_relevancia`, ...) |
+| `numero_processo.py` | normalização e validação do número CNJ (dígito verificador) |
+| `mni_client.py` | cliente zeep singleton, com cache dos XSD |
+| `carga.py` | importa a lista de processos e faz UPSERT |
+| `worker_novos.py` | backfill de processos nunca consultados |
+| `worker_alteracao.py` | varredura de alteração dos processos já consultados |
+| `ingest.py` | grava movimentos e atualiza `hash_estado` |
+| `seed_regras.py` | define as regras de relevância |
+| `aplicar_relevancia.py` | aplica as regras sobre os movimentos coletados |
+| `relatorio_relevantes.py` | relatório em texto dos andamentos relevantes |
+| `generate_dashboard.py` | gera `dashboard.html` |
+
+`mni.db`, `zeep_cache.db` e `dashboard.html` são gerados/estado local — não
+versionados (ver `.gitignore`).

@@ -13,7 +13,11 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Criar `.env` na raiz com:
+Copiar `.env.example` para `.env` e preencher:
+
+```
+cp .env.example .env
+```
 
 ```
 USUARIO_MNI=...
@@ -101,6 +105,23 @@ python3 seed_regras.py
 ```
 
 Não requer alteração no worker — regras de relevância são dado, não código.
+
+## Compartilhar com outro rol de processos
+
+Para dar a base a outra pessoa com uma lista de processos diferente (sem
+misturar com a sua), ela deve partir de um `mni.db` vazio, não do seu:
+
+```
+git clone <repo>          # mni.db, .env e processos.txt não vêm (.gitignore)
+cp .env.example .env      # preencher com as credenciais MNI dela
+python3 db.py             # cria mni.db vazio a partir do schema.sql
+python3 seed_regras.py    # semeia regras_relevancia
+python3 carga.py <lista_dela.txt>
+python3 worker_novos.py   # repetir até pendentes = 0
+```
+
+Nenhum dado do seu `mni.db` é apagado nesse processo — cada pessoa mantém o
+próprio banco local.
 
 ## Arquivos
 

@@ -77,3 +77,17 @@ de arquitetura foram formalizadas em `CLAUDE.md` (regras, lidas
 automaticamente a cada sessão do Claude Code) e neste arquivo (raciocínio,
 consultado quando o assunto voltar), em vez de depender de continuidade de
 chat.
+
+## 009 — Um `mni.db` por rol de processos, não um reset do existente
+
+Compartilhar a aplicação com alguém que acompanha um rol de processos
+diferente não deve significar apagar ou reaproveitar o `mni.db` de quem já
+usa o sistema — isso destruiria `hash_estado` e histórico de movimentos já
+coletados (contrariaria a decisão 004/005).
+
+Decisão: cada pessoa/rol tem seu próprio `mni.db`, criado do zero
+(`schema.sql` via `db.py`) e populado com `carga.py` a partir da lista dela.
+O `.gitignore` já mantém `mni.db`, `.env`, `processos.txt` e `dashboard.html`
+fora do repositório, então clonar o código não traz dados de ninguém junto;
+`.env.example` documenta as variáveis exigidas sem expor credenciais. Passo a
+passo em `README.md` § "Compartilhar com outro rol de processos".
